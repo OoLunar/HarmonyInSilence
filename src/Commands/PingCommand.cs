@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using DSharpPlus.CommandAll.Attributes;
 using DSharpPlus.CommandAll.Commands;
 
-namespace @RepositoryOwner.@RepositoryName.Commands
+namespace OoLunar.HarmonyInSilence.Commands
 {
     public sealed class PingCommand : BaseCommand
     {

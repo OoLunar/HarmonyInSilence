@@ -1,7 +1,7 @@
 using System;
 using DSharpPlus;
 
-namespace @RepositoryOwner.@RepositoryName.Events
+namespace OoLunar.HarmonyInSilence.Events
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
     public sealed class DiscordEventAttribute(DiscordIntents intents) : Attribute

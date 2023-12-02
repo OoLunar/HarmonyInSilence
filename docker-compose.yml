@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  @RepositoryNameLower:
+  harmonyinsilence:
     build: .
-    #image: ghcr.io/@RepositoryFullNameLower:latest
+    #image: ghcr.io/oolunar/harmonyinsilence:latest
     restart: unless-stopped
     env_file: .env
     volumes:

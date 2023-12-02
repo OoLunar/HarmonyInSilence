@@ -6,16 +6,16 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup>
-    <Authors>@RepositoryOwner</Authors>
-    <Description>@RepositoryDescription</Description>
-    <PackageId>@RepositoryOwner.@RepositoryName</PackageId>
+    <Authors>OoLunar</Authors>
+    <Description>Harmony in Silence: A Speech-to-Text Empowerment Initiative for the Hard of Hearing Community.</Description>
+    <PackageId>OoLunar.HarmonyInSilence</PackageId>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageProjectUrl>https://github.com/@RepositoryFullName</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/OoLunar/HarmonyInSilence</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <ProjectRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), "@RepositoryName.sln"))</ProjectRoot>
+    <ProjectRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), "HarmonyInSilence.sln"))</ProjectRoot>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/@RepositoryFullName</RepositoryUrl>
+    <RepositoryUrl>https://github.com/OoLunar/HarmonyInSilence</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(ProjectRoot)/res/config.json" CopyToOutputDirectory="Always" Condition="Exists('$(ProjectRoot)/res/config.json')" />
