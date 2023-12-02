@@ -23,12 +23,13 @@ namespace OoLunar.HarmonyInSilence
         public static async Task Main(string[] args)
         {
             IServiceCollection services = new ServiceCollection();
-            services.AddSingleton(services => new ConfigurationBuilder()
+            services.AddSingleton<IConfiguration>(services => new ConfigurationBuilder()
                 .AddJsonFile("config.json", true, true)
 #if DEBUG
                 .AddJsonFile("config.debug.json", true, true)
 #endif
                 .AddEnvironmentVariables("HarmonyInSilence__")
+                .AddCommandLine(args)
                 .Build());
 
             services.AddLogging(loggerBuilder =>
@@ -85,19 +86,19 @@ namespace OoLunar.HarmonyInSilence
                 return eventManager;
             });
 
-            services.AddSingleton(async services =>
+            services.AddSingleton(async serviceProvider =>
             {
-                IConfiguration configuration = services.GetRequiredService<IConfiguration>();
-                DiscordEventManager eventManager = services.GetRequiredService<DiscordEventManager>();
+                IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
+                DiscordEventManager eventManager = serviceProvider.GetRequiredService<DiscordEventManager>();
                 DiscordShardedClient shardedClient = new(new DiscordConfiguration()
                 {
                     Token = configuration.GetValue<string>("discord:token")!,
-                    Intents = eventManager.Intents,
-                    LoggerFactory = services.GetRequiredService<ILoggerFactory>()
+                    Intents = eventManager.Intents | DiscordIntents.MessageContents,
+                    LoggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>()
                 });
 
                 eventManager.RegisterEventHandlers(shardedClient);
-                IReadOnlyDictionary<int, CommandAllExtension> commandAllShards = await shardedClient.UseCommandAllAsync(new CommandAllConfiguration()
+                IReadOnlyDictionary<int, CommandAllExtension> commandAllShards = await shardedClient.UseCommandAllAsync(new CommandAllConfiguration(services)
                 {
 #if DEBUG
                     DebugGuildId = configuration.GetValue<ulong?>("discord:debug_guild_id"),
