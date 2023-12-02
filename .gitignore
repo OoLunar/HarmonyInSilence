@@ -480,5 +480,6 @@ $RECYCLE.BIN/
 *.swp
 
 # content below from: OoLunar
+.env
 logs/
 res/config.debug.json
