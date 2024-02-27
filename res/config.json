@@ -1,0 +1,20 @@
+{
+    "discord": {
+        "token": "YOUR_DISCORD_BOT_TOKEN",
+        "prefix": "h!",
+        "guild_id": 0
+    },
+    "deepgram": {
+        "token": "YOUR_DEEPGRAM_API_TOKEN"
+    },
+    "logging": {
+        "format": "[{Timestamp:O}] [{Level:u4}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+        "path": "logs/",
+        "file_name": "yyyy'-'MM'-'dd' 'HH'.'mm'.'ss",
+        "log_level": "Information",
+        "rolling_interval": "Day",
+        "overrides": {
+            "Microsoft": "Warning"
+        }
+    }
+}
