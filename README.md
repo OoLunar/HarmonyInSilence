@@ -10,12 +10,12 @@ We wanted to create a solution that would allow these people to participate in v
 Harmony in Silence is a Discord bot that transcribes voice channels in real-time. It uses the Deepgram API to transcribe the audio, and then sends the text to the channel. This allows people who are hard of hearing to participate in voice channels, and feel included in the community. Sometime in the future, we hope to allow users to read the subtitles through either a web interface or - even better - through a Discord bot stream.
 
 ## Roadmap
-| Feature | Description | Status |
-| --- | --- | --- |
-| Hello World | Get the bot up and running | Completed Day 1 |
-| Voice Gateway | Setup a `/join` command to join voice channels | In Progress |
-| Transcription | Record the audio from voice channels and send them in batches to the voice channel messages | Not Started |
-| Web Interface | Create an accessible web interface to view the transcriptions in real-time | Not Started |
+| Feature       | Description                                                                                 | Status          |
+|---------------|---------------------------------------------------------------------------------------------|-----------------|
+| Hello World   | Get the bot up and running                                                                  | Completed Day 1 |
+| Voice Gateway | Setup a `/join` command to join voice channels                                              | In Progress     |
+| Transcription | Record the audio from voice channels and send them in batches to the voice channel messages | Not Started     |
+| Web Interface | Create an accessible web interface to view the transcriptions in real-time                  | Not Started     |
 
 Nearly all of the major dependencies were created by me:
 - [DSharpPlus.Commands](https://github.com/DSharpPlus/DSharpPlus/pull/1680/)
