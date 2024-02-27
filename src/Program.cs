@@ -124,7 +124,7 @@ namespace OoLunar.HarmonyInSilence
             IReadOnlyDictionary<int, CommandsExtension> commandsExtensions = await discordClient.UseCommandsAsync(new CommandsConfiguration()
             {
                 ServiceProvider = serviceProvider,
-                DebugGuildId = harmonyConfiguration.Discord!.GuildId
+                DebugGuildId = harmonyConfiguration.Discord!.GuildId == 0 ? null : harmonyConfiguration.Discord.GuildId,
             });
 
             // Iterate through each Discord shard
