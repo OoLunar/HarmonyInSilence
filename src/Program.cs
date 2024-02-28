@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OoLunar.HarmonyInSilence.Configuration;
+using OoLunar.HarmonyInSilence.Events;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -98,6 +99,13 @@ namespace OoLunar.HarmonyInSilence
 
             services.AddSingleton(serviceProvider =>
             {
+                DiscordEventManager eventManager = new(serviceProvider);
+                eventManager.GatherEventHandlers(typeof(Program).Assembly);
+                return eventManager;
+            });
+
+            services.AddSingleton(serviceProvider =>
+            {
                 HarmonyConfiguration harmonyConfiguration = serviceProvider.GetRequiredService<HarmonyConfiguration>();
                 if (harmonyConfiguration.Discord is null || string.IsNullOrWhiteSpace(harmonyConfiguration.Discord.Token))
                 {
@@ -119,6 +127,7 @@ namespace OoLunar.HarmonyInSilence
             IServiceProvider serviceProvider = services.BuildServiceProvider();
             HarmonyConfiguration harmonyConfiguration = serviceProvider.GetRequiredService<HarmonyConfiguration>();
             DiscordShardedClient discordClient = serviceProvider.GetRequiredService<DiscordShardedClient>();
+            DiscordEventManager eventManager = serviceProvider.GetRequiredService<DiscordEventManager>();
 
             // Register extensions here since these involve asynchronous operations
             IReadOnlyDictionary<int, CommandsExtension> commandsExtensions = await discordClient.UseCommandsAsync(new CommandsConfiguration()
@@ -139,13 +148,23 @@ namespace OoLunar.HarmonyInSilence
 
                 // Add text commands (h!ping) and slash commands (/ping)
                 await commandsExtension.AddProcessorsAsync(textCommandProcessor, new SlashCommandProcessor());
+                eventManager.RegisterEventHandlers(commandsExtension);
             }
 
             // Setup the extension that connects to the Discord voice gateway (voice channels)
-            await discordClient.UseVoiceLinkAsync(new VoiceLinkConfiguration()
+            IReadOnlyDictionary<int, VoiceLinkExtension> voiceLinkExtensions = await discordClient.UseVoiceLinkAsync(new VoiceLinkConfiguration()
             {
                 ServiceCollection = services
             });
+
+            // Iterate through each Discord shard
+            foreach (VoiceLinkExtension voiceLinkExtension in voiceLinkExtensions.Values)
+            {
+                eventManager.RegisterEventHandlers(voiceLinkExtension);
+            }
+
+            // Register event handlers for the Discord Client itself
+            eventManager.RegisterEventHandlers(discordClient);
 
             // Connect the bot to the Discord gateway.
             await discordClient.StartAsync();
