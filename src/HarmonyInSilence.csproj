@@ -23,9 +23,9 @@
     <ProjectReference Include="../libs/DSharpPlus/libs/DSharpPlus/DSharpPlus.Commands/DSharpPlus.Commands.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(ProjectRoot)/LICENSE" Pack="true" PackagePath=""/>
-    <None Include="$(ProjectRoot)/logo.png" Pack="true" PackagePath=""/>
-    <None Include="$(ProjectRoot)/README.md" Pack="true" PackagePath=""/>
+    <None Include="$(ProjectRoot)/LICENSE" Pack="true" PackagePath="" />
+    <None Include="$(ProjectRoot)/logo.png" Pack="true" PackagePath="" />
+    <None Include="$(ProjectRoot)/README.md" Pack="true" PackagePath="" />
     <None Include="$(ProjectRoot)/res/config.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="$(ProjectRoot)/res/config.debug.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
