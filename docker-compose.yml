@@ -1,0 +1,4 @@
+services:
+  harmony_in_silence:
+    build: .
+    env_file: .env
