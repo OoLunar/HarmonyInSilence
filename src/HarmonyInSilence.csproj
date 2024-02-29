@@ -18,9 +18,9 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../libs/DSharpPlus/src/DSharpPlus.VoiceLink/DSharpPlus.VoiceLink.csproj" />
     <ProjectReference Include="../libs/DeepgramSharp/src/DeepgramSharp.csproj" />
-    <ProjectReference Include="../libs/DSharpPlus/libs/DSharpPlus/DSharpPlus.Commands/DSharpPlus.Commands.csproj" />
+    <ProjectReference Include="../libs/DSharpPlus.VoiceLink/src/DSharpPlus.VoiceLink/DSharpPlus.VoiceLink.csproj" />
+    <ProjectReference Include="../libs/DSharpPlus.VoiceLink/libs/DSharpPlus/DSharpPlus.Commands/DSharpPlus.Commands.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(ProjectRoot)/LICENSE" Pack="true" PackagePath="" />

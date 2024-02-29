@@ -1,5 +1,5 @@
 [submodule "libs/DSharpPlus"]
-	path = libs/DSharpPlus
+	path = libs/DSharpPlus.VoiceLink
 	url = git@github.com:OoLunar/DSharpPlus.VoiceLink.git
 [submodule "libs/DeepgramSharp"]
 	path = libs/DeepgramSharp
