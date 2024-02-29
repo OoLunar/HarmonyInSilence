@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using DSharpPlus;
@@ -28,7 +27,8 @@ namespace OoLunar.HarmonyInSilence.Commands
                 return;
             }
 
-            throw new NotImplementedException("DSharpPlus.VoiceLink has not yet implemented a way to disconnect from a voice channel.");
+            await connection.DisconnectAsync();
+            await context.RespondAsync("Disconnected from the voice channel.");
         }
     }
 }
