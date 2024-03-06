@@ -27,7 +27,7 @@ namespace OoLunar.HarmonyInSilence
         public static async Task Main(string[] args)
         {
             IServiceCollection services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(serviceProvider =>
+            services.AddSingleton(serviceProvider =>
             {
                 ConfigurationBuilder configurationBuilder = new();
                 configurationBuilder.Sources.Clear();
@@ -38,12 +38,8 @@ namespace OoLunar.HarmonyInSilence
                 configurationBuilder.AddEnvironmentVariables("HARMONY_IN_SILENCE__");
                 configurationBuilder.AddCommandLine(args);
 
-                return configurationBuilder.Build();
-            });
-
-            services.AddSingleton(serviceProvider =>
-            {
-                HarmonyConfiguration? harmonyConfiguration = serviceProvider.GetRequiredService<IConfiguration>().Get<HarmonyConfiguration>();
+                IConfiguration configuration = configurationBuilder.Build();
+                HarmonyConfiguration? harmonyConfiguration = configuration.Get<HarmonyConfiguration>();
                 if (harmonyConfiguration is null)
                 {
                     Console.WriteLine("No configuration found! Please modify the config file, set environment variables or pass command line arguments. Exiting...");
@@ -97,6 +93,7 @@ namespace OoLunar.HarmonyInSilence
                 return new DeepgramClient(harmonyConfiguration.Deepgram.Token, serviceProvider.GetRequiredService<ILogger<DeepgramClient>>());
             });
 
+            services.AddSingleton<HarmonyUserMapper>();
             services.AddSingleton(serviceProvider =>
             {
                 DiscordEventManager eventManager = new(serviceProvider);
