@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net.WebSockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DeepgramSharp;
@@ -15,18 +14,19 @@ namespace OoLunar.HarmonyInSilence
 {
     public sealed record HarmonyAudioMap
     {
-        // PCM 16-bit, 48kHz, 2 channels, 20ms
-        private static readonly byte[] SilenceFrame = new byte[9600];
+        // Opus silence frame, 20ms, 48kHz, stereo
+        private static readonly byte[] SilenceFrame = [0xf8, 0xff, 0xfe];
 
         public DeepgramLivestreamApi Connection { get; init; }
-        public Dictionary<VoiceLinkUser, int> UserChannels { get; init; }
+        public Dictionary<int, VoiceLinkUser> UserChannels { get; init; }
         public int AvailableChannels => _maxChannelCount - UserChannels.Count;
         private readonly int _maxChannelCount;
+        private readonly object _addLock = new();
 
         public HarmonyAudioMap(DeepgramLivestreamApi connection, VoiceLinkUser user, int maxChannelCount = 255)
         {
             Connection = connection;
-            UserChannels = new() { { user, 0 } };
+            UserChannels = new() { { 0, user } };
             _maxChannelCount = maxChannelCount;
             _ = StartSendingTranscriptionAsync();
             _ = StartReceivingTranscriptionAsync();
@@ -34,17 +34,33 @@ namespace OoLunar.HarmonyInSilence
 
         public bool TryAddUser(VoiceLinkUser user)
         {
-            int channelPosition = AvailableChannels;
-            if (channelPosition == 0 || UserChannels.ContainsKey(user))
+            lock (_addLock)
             {
-                return false;
-            }
+                if (AvailableChannels == 0 || UserChannels.ContainsValue(user))
+                {
+                    return false;
+                }
 
-            UserChannels.Add(user, channelPosition);
-            return true;
+                UserChannels.Add(AvailableChannels, user);
+                return true;
+            }
         }
 
-        public bool TryRemoveUser(VoiceLinkUser user) => UserChannels.Remove(user);
+        public bool TryRemoveUser(VoiceLinkUser user)
+        {
+            lock (_addLock)
+            {
+                foreach (KeyValuePair<int, VoiceLinkUser> pair in UserChannels)
+                {
+                    if (pair.Value == user)
+                    {
+                        return UserChannels.Remove(pair.Key);
+                    }
+                }
+            }
+
+            return false;
+        }
 
         public async Task StartSendingTranscriptionAsync()
         {
@@ -58,7 +74,7 @@ namespace OoLunar.HarmonyInSilence
             // This will be broken when the user disconnects from the VC.
             while (true)
             {
-                VoiceLinkUser VoiceLinkUser = UserChannels.Keys.First();
+                VoiceLinkUser VoiceLinkUser = UserChannels[0];
 
                 // Rent out 5 seconds to read audio
                 ResetCancellationToken(VoiceLinkUser.AudioPipe, ref timeoutCts);
@@ -98,33 +114,27 @@ namespace OoLunar.HarmonyInSilence
         public async Task StartReceivingTranscriptionAsync()
         {
             bool isOpen = true;
-            StringBuilder stringBuilder = new();
             PeriodicTimer timeoutTimer = new(TimeSpan.FromSeconds(5));
             while (await timeoutTimer.WaitForNextTickAsync() && isOpen)
             {
-                foreach (VoiceLinkUser VoiceLinkUser in UserChannels.Keys)
+                DeepgramLivestreamResponse? response;
+                while ((response = Connection.ReceiveTranscription()) is not null)
                 {
-                    stringBuilder.Clear();
-                    DeepgramLivestreamResponse? response;
-                    while ((response = Connection.ReceiveTranscription()) is not null)
+                    if (response.Type is DeepgramLivestreamResponseType.Transcript && response.Transcript is not null)
                     {
-                        if (response.Type is DeepgramLivestreamResponseType.Transcript)
+                        for (int i = 0; i < response.Transcript.Channel.Alternatives.Count; i++)
                         {
-                            string? transcription = response.Transcript?.Channel.Alternatives[0].Transcript;
-                            if (response.Transcript!.IsFinal)
+                            string? transcription = response.Transcript.Channel.Alternatives[i].Transcript;
+                            if (response.Transcript!.IsFinal && transcription.Length > 0)
                             {
-                                stringBuilder.Append(transcription);
+                                VoiceLinkUser voiceLinkUser = UserChannels[i];
+                                await voiceLinkUser.Connection.Channel.SendMessageAsync($"{voiceLinkUser.Member.DisplayName}: {transcription}");
                             }
                         }
-                        else if (response.Type is DeepgramLivestreamResponseType.Closed)
-                        {
-                            isOpen = false;
-                        }
                     }
-
-                    if (stringBuilder.Length > 0)
+                    else if (response.Type is DeepgramLivestreamResponseType.Closed)
                     {
-                        await VoiceLinkUser.Connection.Channel.SendMessageAsync($"{VoiceLinkUser.Member.DisplayName}: {stringBuilder}");
+                        isOpen = false;
                     }
                 }
             }
