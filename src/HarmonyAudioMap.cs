@@ -3,26 +3,24 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DeepgramSharp;
+using DeepgramSharp.Entities;
 using DSharpPlus.VoiceLink;
-using DSharpPlus.VoiceLink.Opus;
 
 namespace OoLunar.HarmonyInSilence
 {
     public sealed record HarmonyAudioMap
     {
-        private const int SAMPLE_RATE = 48000; // 48kHz
-        private const int FRAME_DURATION_MS = 20; // 20ms
-        private const int BYTES_PER_SAMPLE = 2; // assuming 16-bit audio
-        private const int SAMPLES_PER_FRAME = SAMPLE_RATE * FRAME_DURATION_MS / 1000;
-        private const int BYTES_PER_FRAME = SAMPLES_PER_FRAME * BYTES_PER_SAMPLE;
+        // PCM 16-bit, 48kHz, 2 channels, 20ms
+        private static readonly byte[] SilenceFrame = new byte[9600];
 
         public DeepgramLivestreamApi Connection { get; init; }
         public Dictionary<VoiceLinkUser, int> UserChannels { get; init; }
         public int AvailableChannels => _maxChannelCount - UserChannels.Count;
-        private readonly CancellationTokenSource _cancellationTokenSource = new();
         private readonly int _maxChannelCount;
 
         public HarmonyAudioMap(DeepgramLivestreamApi connection, VoiceLinkUser user, int maxChannelCount = 255)
@@ -30,7 +28,8 @@ namespace OoLunar.HarmonyInSilence
             Connection = connection;
             UserChannels = new() { { user, 0 } };
             _maxChannelCount = maxChannelCount;
-            _ = StartTranscriptionAsync();
+            _ = StartSendingTranscriptionAsync();
+            _ = StartReceivingTranscriptionAsync();
         }
 
         public bool TryAddUser(VoiceLinkUser user)
@@ -47,96 +46,97 @@ namespace OoLunar.HarmonyInSilence
 
         public bool TryRemoveUser(VoiceLinkUser user) => UserChannels.Remove(user);
 
-        private async Task StartTranscriptionAsync()
+        public async Task StartSendingTranscriptionAsync()
         {
-            // Create a timeout token source to cancel any tasks waiting for unreceived audio
-            CancellationTokenSource _timeoutTokenSource = new();
+            // Send a frame of silence to prevent the connection from closing
+            await Connection.SendAudioAsync(SilenceFrame);
 
-            // Periodically send audio to Deepgram
-            PeriodicTimer timer = new(TimeSpan.FromMilliseconds(20));
+            // Ensure we're never waiting more than 5 seconds for audio data,
+            // Deepgram will close the connection after 10 seconds of no audio being sent.
+            CancellationTokenSource timeoutCts = new();
 
-            // 512kb buffer
-            byte[] buffer = new byte[512 * 1024];
-            while (await timer.WaitForNextTickAsync(_cancellationTokenSource.Token))
+            // This will be broken when the user disconnects from the VC.
+            while (true)
             {
-                // Write audio data to the buffer
-                int bytesWritten = WriteToBuffer(buffer, ref _timeoutTokenSource);
+                VoiceLinkUser VoiceLinkUser = UserChannels.Keys.First();
 
-                // Send the audio to Deepgram
-                await Connection.SendAudioAsync(buffer.AsMemory(0, bytesWritten), _cancellationTokenSource.Token);
+                // Rent out 5 seconds to read audio
+                ResetCancellationToken(VoiceLinkUser.AudioPipe, ref timeoutCts);
 
-                // Clear the buffer
-                Array.Clear(buffer, 0, bytesWritten);
-
-                // Needs Testing: In theory I will always be filling the entire buffer
-                // which means I can clear all of it instead of just the written bytes
-                // However because this is untested, I will leave it as is.
-            }
-
-            int WriteToBuffer(Span<byte> buffer, ref CancellationTokenSource _timeoutTokenSource)
-            {
-                // Set the timeout token to cancel after 20ms - the amount of time available in an audio frame.
-                _timeoutTokenSource.CancelAfter(TimeSpan.FromMilliseconds(20));
-
-                // Copy audio data from each user to the buffer
-                int bufferOffset = 0;
-
-                //foreach (VoiceLinkUser user in UserChannels.Keys)
-                //{
-                //    // If data is available, copy it to the buffer
-                //    // Otherwise it'll be zero filled which is silence
-                //    if (TryGetChannelData(user, out ReadOnlySpan<byte> data))
-                //    {
-                //        // Copy data to the corresponding channel in the buffer
-                //        data.CopyTo(buffer[bufferOffset..]);
-                //    }
-                //
-                //    bufferOffset += data.Length;
-                //}
-
-                // Reset the timeout token ASAP so we can possibly reuse it
-                if (!_timeoutTokenSource.TryReset())
+                // Attempt to get the user's voice data
+                ReadResult result = await VoiceLinkUser.AudioPipe.ReadAsync();
+                if (Connection.State != WebSocketState.Open)
                 {
-                    _timeoutTokenSource = new();
+                    // Always mark the read as finished.
+                    VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.End);
+                    break;
+                }
+                else if (result.IsCanceled)
+                {
+                    // The result was cancelled from a timeout, send a frame of silence
+                    VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.Start, result.Buffer.End);
+                    await Connection.SendAudioAsync(SilenceFrame);
+                    continue;
                 }
 
-                // Fill the rest of the channels with Opus silence packets
-                if (AvailableChannels > 0)
+                // Send the audio data for transcription
+                await Connection.SendAudioAsync(result.Buffer.ToArray());
+
+                // Always mark the read as finished.
+                VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.End);
+
+                // The user disconnected from the VC.
+                if (result.IsCompleted)
                 {
-                    // Create a silence packet
-                    OpusEncoder encoder = OpusEncoder.Create(OpusSampleRate.Opus48000Hz, 1, OpusApplication.Voip);
-                    Span<byte> frame = buffer[bufferOffset..];
-                    int bytesWritten = encoder.Encode([], 120, ref frame);
-
-                    // Copy the silence packet to the buffer per however many channels are available
-                    Span<byte> silence = frame[bufferOffset..bytesWritten];
-                    int i = AvailableChannels;
-                    while (i > 0)
-                    {
-                        silence.CopyTo(buffer[bufferOffset..]);
-                        bufferOffset += silence.Length;
-                        i--;
-                    }
+                    // Tell Deepgram that we're not going to be sending any more audio.
+                    await Connection.RequestClosureAsync();
+                    return;
                 }
-
-                // Also known as the number of bytes written to the buffer
-                return bufferOffset;
             }
         }
 
-        private static bool TryGetChannelData(VoiceLinkUser user, out ReadOnlySpan<byte> data)
+        public async Task StartReceivingTranscriptionAsync()
         {
-            if (user.AudioPipe.TryRead(out ReadResult readResult))
+            bool isOpen = true;
+            StringBuilder stringBuilder = new();
+            PeriodicTimer timeoutTimer = new(TimeSpan.FromSeconds(5));
+            while (await timeoutTimer.WaitForNextTickAsync() && isOpen)
             {
-                // Check if there is enough data for one frame
-                data = readResult.Buffer.ToArray();
-                user.AudioPipe.AdvanceTo(readResult.Buffer.GetPosition(BYTES_PER_FRAME));
-                return true;
-            }
+                foreach (VoiceLinkUser VoiceLinkUser in UserChannels.Keys)
+                {
+                    stringBuilder.Clear();
+                    DeepgramLivestreamResponse? response;
+                    while ((response = Connection.ReceiveTranscription()) is not null)
+                    {
+                        if (response.Type is DeepgramLivestreamResponseType.Transcript)
+                        {
+                            string? transcription = response.Transcript?.Channel.Alternatives[0].Transcript;
+                            if (response.Transcript!.IsFinal)
+                            {
+                                stringBuilder.Append(transcription);
+                            }
+                        }
+                        else if (response.Type is DeepgramLivestreamResponseType.Closed)
+                        {
+                            isOpen = false;
+                        }
+                    }
 
-            user.AudioPipe.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-            data = default;
-            return false;
+                    if (stringBuilder.Length > 0)
+                    {
+                        await VoiceLinkUser.Connection.Channel.SendMessageAsync($"{VoiceLinkUser.Member.DisplayName}: {stringBuilder}");
+                    }
+                }
+            }
+        }
+
+        private static void ResetCancellationToken(PipeReader pipeReader, ref CancellationTokenSource cancellationTokenSource)
+        {
+            if (!cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new(TimeSpan.FromSeconds(5));
+                cancellationTokenSource.Token.Register(pipeReader.CancelPendingRead);
+            }
         }
     }
 }

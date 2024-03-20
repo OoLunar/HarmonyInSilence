@@ -9,6 +9,7 @@ using DSharpPlus.Commands.Processors.SlashCommands;
 using DSharpPlus.Commands.Processors.TextCommands;
 using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.VoiceLink;
+using DSharpPlus.VoiceLink.AudioDecoders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -151,7 +152,8 @@ namespace OoLunar.HarmonyInSilence
             // Setup the extension that connects to the Discord voice gateway (voice channels)
             IReadOnlyDictionary<int, VoiceLinkExtension> voiceLinkExtensions = await discordClient.UseVoiceLinkAsync(new VoiceLinkConfiguration()
             {
-                ServiceCollection = services
+                ServiceCollection = services,
+                AudioDecoderFactory = _ => new OpusAudioDecoder()
             });
 
             // Iterate through each Discord shard

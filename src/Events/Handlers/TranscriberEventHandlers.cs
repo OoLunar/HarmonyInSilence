@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink;
 using DSharpPlus.VoiceLink.EventArgs;
@@ -30,18 +29,18 @@ namespace OoLunar.HarmonyInSilence.Events.Handlers
             }
         }
 
-        [DiscordEvent]
-        public async Task UserDisconnectAsync(VoiceLinkExtension extension, VoiceLinkUserEventArgs eventArgs)
-        {
-            // User joined a channel
-            if (eventArgs.Connection.Channel.Users.Contains(eventArgs.Member))
-            {
-                return;
-            }
-
-            // User left a channel
-            _logger.LogDebug("User {UserId} left channel {ChannelId} of guild {GuildId}", eventArgs.Member.Id, eventArgs.Connection.Channel.Id, eventArgs.Connection.Guild.Id);
-            await _userMapper.RemoveTranscriberAsync(eventArgs.Member.Id);
-        }
+        //[DiscordEvent]
+        //public async Task UserDisconnectAsync(VoiceLinkExtension extension, VoiceLinkUserEventArgs eventArgs)
+        //{
+        //    // User joined a channel
+        //    if (eventArgs.Connection.Channel.Users.Contains(eventArgs.Member))
+        //    {
+        //        return;
+        //    }
+        //
+        //    // User left a channel
+        //    _logger.LogDebug("User {UserId} left channel {ChannelId} of guild {GuildId}", eventArgs.Member.Id, eventArgs.Connection.Channel.Id, eventArgs.Connection.Guild.Id);
+        //    await _userMapper.RemoveTranscriberAsync(eventArgs.Member.Id);
+        //}
     }
 }
