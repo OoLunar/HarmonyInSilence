@@ -35,7 +35,7 @@ namespace OoLunar.HarmonyInSilence
 #if DEBUG
                 configurationBuilder.AddJsonFile("config.debug.json", true, true);
 #endif
-                configurationBuilder.AddEnvironmentVariables("HARMONY_IN_SILENCE__");
+                configurationBuilder.AddEnvironmentVariables("HarmonyInSilence__");
                 configurationBuilder.AddCommandLine(args);
 
                 IConfiguration configuration = configurationBuilder.Build();

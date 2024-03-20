@@ -25,7 +25,7 @@ namespace OoLunar.HarmonyInSilence
             //_logger = logger ?? NullLogger<HarmonyUserMapper>.Instance;
         }
 
-        public async ValueTask AddTranscriberAsync(VoiceLinkUser user)
+        public async ValueTask<bool> TryAddTranscriberAsync(VoiceLinkUser user)
         {
             //if (_transcriberMap.ContainsKey(user))
             //{
@@ -46,6 +46,11 @@ namespace OoLunar.HarmonyInSilence
             //_transcriberMap.Add(user, map);
             //_logger.LogInformation("Added user {UserId} to new transcription map", user.Member.Id);
 
+            if (_userMap.Count >= 100)
+            {
+                return false;
+            }
+
             DeepgramLivestreamApi livestreamApi = await _deepgramClient.CreateLivestreamAsync(new()
             {
                 Channels = 2,
@@ -53,7 +58,10 @@ namespace OoLunar.HarmonyInSilence
                 //MultiChannel = true,
                 Encoding = DeepgramEncoding.Linear16,
                 Model = "nova-2",
-                InterimResults = true
+                InterimResults = true,
+                Punctuate = true,
+                SmartFormat = true,
+                FillerWords = true
             });
 
             HarmonyUser harmonyUser = new()
@@ -66,6 +74,7 @@ namespace OoLunar.HarmonyInSilence
             _ = harmonyUser.StartSendingTranscriptionAsync();
             _ = harmonyUser.StartReceivingTranscriptionAsync();
             _userMap.Add(user, harmonyUser);
+            return true;
         }
 
         public ValueTask<bool> RemoveTranscriberAsync(ulong userId)

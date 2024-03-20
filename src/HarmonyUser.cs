@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.IO;
 using System.IO.Pipelines;
 using System.Net.WebSockets;
 using System.Text;
@@ -14,7 +13,8 @@ namespace OoLunar.HarmonyInSilence
 {
     public sealed record HarmonyUser
     {
-        private static readonly byte[] SilenceFrame = [0xF8, 0xFF, 0xFE];
+        // PCM 16-bit, 48kHz, 2 channels
+        private static readonly byte[] SilenceFrame = new byte[9600];
 
         public required VoiceLinkUser VoiceLinkUser { get; init; }
         public required DeepgramLivestreamApi SubtitleConnection { get; init; }
@@ -22,18 +22,6 @@ namespace OoLunar.HarmonyInSilence
 
         public async Task StartSendingTranscriptionAsync()
         {
-            if (!Directory.Exists("tests"))
-            {
-                Directory.CreateDirectory("tests");
-            }
-
-            if (File.Exists($"tests/{VoiceLinkUser.Member.Id}.wav"))
-            {
-                File.Delete($"tests/{VoiceLinkUser.Member.Id}.wav");
-            }
-
-            using FileStream fileStream = File.Create($"tests/{VoiceLinkUser.Member.Id}.pcm");
-
             // Send a frame of silence to prevent the connection from closing
             await SubtitleConnection.SendAudioAsync(SilenceFrame);
 
@@ -60,41 +48,36 @@ namespace OoLunar.HarmonyInSilence
                     // The result was cancelled from a timeout, send a frame of silence
                     VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.Start, result.Buffer.End);
                     await SubtitleConnection.SendAudioAsync(SilenceFrame);
-                    await fileStream.WriteAsync(SilenceFrame);
-                    await fileStream.FlushAsync();
                     continue;
                 }
 
                 // Send the audio data for transcription
                 await SubtitleConnection.SendAudioAsync(result.Buffer.ToArray());
-                await fileStream.WriteAsync(result.Buffer.ToArray());
-                await fileStream.FlushAsync();
+
+                // Always mark the read as finished.
+                VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.End);
 
                 // The user disconnected from the VC.
                 if (result.IsCompleted)
                 {
+                    // Tell Deepgram that we're not going to be sending any more audio.
                     await SubtitleConnection.RequestClosureAsync();
+                    return;
                 }
-
-                // Always mark the read as finished.
-                VoiceLinkUser.AudioPipe.AdvanceTo(result.Buffer.End);
             }
         }
 
         public async Task StartReceivingTranscriptionAsync()
         {
+            bool isOpen = true;
             PeriodicTimer timeoutTimer = new(TimeSpan.FromSeconds(5));
-            while (await timeoutTimer.WaitForNextTickAsync())
+            while (await timeoutTimer.WaitForNextTickAsync() && isOpen)
             {
                 StringBuilder stringBuilder = new();
                 DeepgramLivestreamResponse? response;
                 while ((response = SubtitleConnection.ReceiveTranscription()) is not null)
                 {
-                    if (response.Type is DeepgramLivestreamResponseType.Closed)
-                    {
-                        throw new InvalidOperationException($"Subtitle connection was closed: {response.Error?.ToString() ?? response.Metadata?.ToString() ?? "No error or metadata provided."}");
-                    }
-                    else if (response.Type is DeepgramLivestreamResponseType.Transcript)
+                    if (response.Type is DeepgramLivestreamResponseType.Transcript)
                     {
                         string? transcription = response.Transcript?.Channel.Alternatives[0].Transcript;
                         if (response.Transcript!.IsFinal)
@@ -102,9 +85,16 @@ namespace OoLunar.HarmonyInSilence
                             stringBuilder.Append(transcription);
                         }
                     }
+                    else if (response.Type is DeepgramLivestreamResponseType.Closed)
+                    {
+                        isOpen = false;
+                    }
                 }
 
-                await VoiceLinkUser.Connection.Channel.SendMessageAsync($"{VoiceLinkUser.Member.DisplayName}: {stringBuilder}");
+                if (stringBuilder.Length > 0)
+                {
+                    await VoiceLinkUser.Connection.Channel.SendMessageAsync($"{VoiceLinkUser.Member.DisplayName}: {stringBuilder}");
+                }
             }
         }
 

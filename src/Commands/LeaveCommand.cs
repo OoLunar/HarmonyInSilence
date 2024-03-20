@@ -10,8 +10,7 @@ namespace OoLunar.HarmonyInSilence.Commands
 {
     public sealed class LeaveCommand
     {
-        [Command("leave"), Description("Leaves the voice channel.")]
-        [RequireGuild]
+        [Command("leave"), Description("Leaves the voice channel."), RequireGuild]
         public static async ValueTask ExecuteAsync(CommandContext context)
         {
             if (!context.Client.GetVoiceLinkExtension().Connections.TryGetValue(context.Guild!.Id, out VoiceLinkConnection? connection))

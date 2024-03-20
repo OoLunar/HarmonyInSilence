@@ -5,5 +5,6 @@ namespace OoLunar.HarmonyInSilence.Configuration
         public required string? Token { get; init; }
         public string Prefix { get; init; } = "h!";
         public ulong GuildId { get; init; }
+        public string SupportServerInvite { get; init; } = "https://discord.gg/your-server-invite";
     }
 }

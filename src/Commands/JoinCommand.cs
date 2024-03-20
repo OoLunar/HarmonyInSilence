@@ -12,8 +12,7 @@ namespace OoLunar.HarmonyInSilence.Commands
 {
     public sealed class JoinCommand
     {
-        [Command("join"), Description("Join a voice channel to start providing subtitles.")]
-        [RequireGuild]
+        [Command("join"), Description("Join a voice channel to start providing subtitles."), RequireGuild]
         public static async ValueTask ExecuteAsync(CommandContext context, DiscordChannel? channel = null)
         {
             if (channel is null)
@@ -56,7 +55,7 @@ namespace OoLunar.HarmonyInSilence.Commands
                 return;
             }
 
-            connection = await voice.ConnectAsync(channel, VoiceState.UserMuted);
+            await voice.ConnectAsync(channel, VoiceState.UserMuted);
             await context.RespondAsync($"Joined {channel.Mention}.");
         }
     }

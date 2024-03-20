@@ -23,7 +23,11 @@ namespace OoLunar.HarmonyInSilence.Events.Handlers
         public async Task UserSpokeAsync(VoiceLinkExtension extension, VoiceLinkUserSpeakingEventArgs eventArgs)
         {
             _logger.LogDebug("User {UserId} spoke in channel {ChannelId} of guild {GuildId}", eventArgs.User.Id, eventArgs.Channel.Id, eventArgs.Guild.Id);
-            await _userMapper.AddTranscriberAsync(eventArgs.VoiceUser);
+            if (!await _userMapper.TryAddTranscriberAsync(eventArgs.VoiceUser))
+            {
+                // TODO: Add a queue maybe?
+                await eventArgs.Channel.SendMessageAsync($"Heads up, I'm currently at my transcription limit. I can't transcribe any more users right now. I'm sorry {eventArgs.User.Mention}!");
+            }
         }
 
         [DiscordEvent]
