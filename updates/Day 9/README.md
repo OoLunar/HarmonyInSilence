@@ -1,8 +1,13 @@
-# Day 4
+# Day 9
 ## Summary
 Planning out the transcriber mapper is a headache. But DSharpPlus.VoiceLink now supports disconnecting. The bot can now leave voice channels and send the invite command with the correct required permissions being requested.
 
 ## Table of Contents
+- [Summary](#summary)
+- [Details](#details)
+  - [`DSharpPlus.VoiceLink`](#dsharpplusvoicelink)
+  - [`TranscriberMapper`](#transcriber-mapper)
+- [Conclusion](#conclusion)
 
 ## Details
 
