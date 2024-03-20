@@ -13,8 +13,8 @@ Harmony in Silence is a Discord bot that transcribes voice channels in real-time
 | Feature       | Description                                                                                 | Status          |
 |---------------|---------------------------------------------------------------------------------------------|-----------------|
 | Hello World   | Get the bot up and running                                                                  | Completed Day 1 |
-| Voice Gateway | Setup a `/join` command to join voice channels                                              | In Progress     |
-| Transcription | Record the audio from voice channels and send them in batches to the voice channel messages | Not Started     |
+| Voice Gateway | Setup a `/join` command to join voice channels                                              | Completed Day 3 |
+| Transcription | Record the audio from voice channels and send them in batches to the voice channel messages | In Progress     |
 | Web Interface | Create an accessible web interface to view the transcriptions in real-time                  | Not Started     |
 
 Nearly all of the major dependencies were created by me:
