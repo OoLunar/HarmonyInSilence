@@ -51,7 +51,7 @@ graph TD;
     SendFinalMessages --> Exit
 
     CancelBackgroundSubtitleTask --> BalanceUsers[Balance existing users across other connections]
-    BalanceUsers --> Close_Extra_Connections[Close any extra connections... *Maybe*]
+    BalanceUsers --> CloseExtraConnections[Close any extra connections... *Maybe*]
 ```
 
 Right now, we only have two restrictions:
