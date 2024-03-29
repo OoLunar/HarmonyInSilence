@@ -13,6 +13,7 @@ using DSharpPlus.VoiceLink.AudioDecoders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OoLunar.HarmonyInSilence.Audio;
 using OoLunar.HarmonyInSilence.Configuration;
 using OoLunar.HarmonyInSilence.Events;
 using Serilog;
@@ -153,7 +154,7 @@ namespace OoLunar.HarmonyInSilence
             IReadOnlyDictionary<int, VoiceLinkExtension> voiceLinkExtensions = await discordClient.UseVoiceLinkAsync(new VoiceLinkConfiguration()
             {
                 ServiceCollection = services,
-                AudioDecoderFactory = _ => new OpusAudioDecoder()
+                AudioDecoderFactory = _ => new Pcm16BitAudioDecoder(1)
             });
 
             // Iterate through each Discord shard
